@@ -115,8 +115,14 @@ That can be done by changing which module is uncommented in
 ``/etc/httpd/conf.modules.d/00-mpm.conf``.
 The "event" MPM is the default on Red Hat Enterprise Linux 8.
 
-Squid Configuration
--------------------
+Caching Configuration
+---------------------
+
+Multiple reverse-proxy caching solutions are available for use as a Stratum 1
+caching layer using either Squid or Varnish.
+
+Setting up a squid server
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you participate in the Open Science Grid (OSG) or the European Grid
 Infrastructure (EGI), you are encouraged to use their distribution of
@@ -169,10 +175,40 @@ disk cache area with ``squid -z``. In order to make the increased number
 of file descriptors effective for Squid, execute ``ulimit -n 8192``
 prior to starting the squid service.
 
-The Squid also needs to respond to port 80, but Squid might not have the
-ability to directly listen there if it is run unprivileged, plus Apache
+Setting up a varnish server
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The `varnish` package is available in most Linux operating system distributions
+with different versions available. Alternatively, specific versions can be used
+reliably by leveraging `official repositories
+<https://www.varnish-software.com/developers/tutorials/installing-varnish-red-hat-enterprise-linux/>`_
+or by relying on pre-made `docker images
+<https://www.varnish-software.com/developers/tutorials/running-varnish-docker/>`_.
+
+Varnish leverages a `configuration language (VCL)
+<https://varnish-cache.org/docs/trunk/users-guide/vcl.html>`_ allowing precise
+caching behaviour for every specific request. The following VCL is taylored for use
+for CernVM-FS stratum1 reverse proxy caching:
+
+::
+
+    TODO VCL
+
+For ease of configuration, this can replace the default configuration in
+``/etc/varnish/defaut.vcl``.
+
+By default Varnish listens on port 6081, this can be changed in the systemd unit file
+of the `varnish service
+<https://varnish-cache.org/docs/trunk/tutorial/putting_varnish_on_port_80.html>`_ for
+example to be set on port 80 or 8000.
+
+Routing requests to the cache
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The Squid or Varnish server also needs to respond to port 80, but it might not
+have the ability to directly listen there if it is run unprivileged, plus Apache
 listens on port 80 by default. Direct external port 80 traffic to port
-8000 with the following command:
+8000 for Squid or port 6081 for Varnish with the following command:
 
 ::
 
@@ -181,7 +217,7 @@ listens on port 80 by default. Direct external port 80 traffic to port
 If IPv6 is supported, do the same command with ``ip6tables``. This will
 leave localhost traffic to port 80 going directly to Apache, which is
 good because ``cvmfs_server`` uses that, and it doesn't need to go
-through squid.
+through the cache.
 
 .. note::
     Port 8000 might be assigned to ``soundd``. On SElinux systems,
